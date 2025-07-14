@@ -23,12 +23,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Switch to Windows containers
-        shell: pwsh
-        run: |
-          # This flips Docker Desktop to Windows container mode
-          & 'C:\Program Files\Docker\Docker\DockerCli.exe' -SwitchDaemon windows
-
       - name: Azure Login (AZURE OIDC)
         uses: azure/login@v2
         with:
