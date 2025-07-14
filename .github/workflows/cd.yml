@@ -19,13 +19,15 @@ jobs:
   build-and-push:
     runs-on: windows-latest
     environment: Production
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Switch to Windows containers
+        shell: pwsh
+        run: |
+          # This flips Docker Desktop to Windows container mode
+          & 'C:\Program Files\Docker\Docker\DockerCli.exe' -SwitchDaemon windows
 
       - name: Azure Login (AZURE OIDC)
         uses: azure/login@v2
@@ -35,19 +37,18 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           enable-AzPSSession: true
 
-      - name: Log in to Azure Container Registry (OIDC CLI)
+      - name: Log in to ACR
+        shell: pwsh
+        run: az acr login --name ${{ env.REGISTRY }}
+
+      - name: Build Windows container
+        shell: pwsh
         run: |
-          az acr login --name ${{ env.REGISTRY }}
+          docker build --platform windows/amd64 `
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }} `
+            -f Dockerfile .
 
-      
-      - name: Set image tag
-        run: echo "IMAGE_TAG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}" >> $GITHUB_ENV
-
-      - name: Build and push Docker image to ACR
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ env.IMAGE_TAG }}
-          file: Dockerfile
-          platforms: windows/amd64
+      - name: Push to ACR
+        shell: pwsh
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
